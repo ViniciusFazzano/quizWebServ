@@ -222,7 +222,7 @@ wss.on('connection', (ws) => {
 });
 
 
-const PORT = 8080;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
   console.log('Espere jogadores entrarem e clique em "Iniciar Quiz" no site para começar.');
