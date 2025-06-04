@@ -1,0 +1,52 @@
+[
+  {
+    "question": "Qual é a capital do Brasil?",
+    "options": [
+      "Rio de Janeiro",
+      "São Paulo",
+      "Brasília",
+      "Salvador"
+    ],
+    "answerIndex": 2
+  },
+  {
+    "question": "Em que ano o homem pisou na Lua pela primeira vez?",
+    "options": [
+      "1965",
+      "1969",
+      "1972",
+      "1959"
+    ],
+    "answerIndex": 1
+  },
+  {
+    "question": "Qual é o maior oceano do planeta Terra?",
+    "options": [
+      "Oceano Atlântico",
+      "Oceano Índico",
+      "Oceano Pacífico",
+      "Oceano Ártico"
+    ],
+    "answerIndex": 2
+  },
+  {
+    "question": "Quem pintou a Mona Lisa?",
+    "options": [
+      "Vincent van Gogh",
+      "Leonardo da Vinci",
+      "Pablo Picasso",
+      "Michelangelo"
+    ],
+    "answerIndex": 1
+  },
+  {
+    "question": "Qual é a fórmula química da água?",
+    "options": [
+      "CO₂",
+      "H₂O",
+      "O₂",
+      "NaCl"
+    ],
+    "answerIndex": 1
+  }
+]

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quiz Game</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f5f5f5;
+    }
+    #login, #game, #scoreboard {
+      max-width: 500px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #options button,
+    #startBtn,
+    #restartBtn {
+      display: block;
+      width: 100%;
+      margin: 8px 0;
+      padding: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fafafa;
+    }
+    #options button:hover,
+    #startBtn:hover,
+    #restartBtn:hover {
+      background: #eef;
+    }
+    #status {
+      margin-top: 10px;
+      font-style: italic;
+      color: #333;
+    }
+    #scoreboard ul {
+      list-style: none;
+      padding: 0;
+    }
+    #scoreboard li {
+      font-size: 18px;
+      margin: 6px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Tela de Login/Registro -->
+  <div id="login">
+    <h2>Entrar no Quiz</h2>
+    <input type="text" id="nameInput" placeholder="Digite seu nome" />
+    <button id="joinBtn">Entrar</button>
+    <div id="loginStatus" style="color: red; margin-top: 10px;"></div>
+  </div>
+
+  <!-- Área do jogo (escondida até logar) -->
+  <div id="game" style="display: none;">
+    <h2>Quiz em Andamento</h2>
+
+    <!-- Botão para iniciar o quiz -->
+    <button id="startBtn">Iniciar Quiz</button>
+
+    <!-- Aqui serão exibidas as perguntas e opções -->
+    <div id="question" style="margin-top: 20px;"></div>
+    <div id="options"></div>
+    <div id="status"></div>
+  </div>
+
+  <!-- Placar final (escondido até o quiz terminar) -->
+  <div id="scoreboard" style="display: none;">
+    <h2>Placar Final</h2>
+    <ul id="scores"></ul>
+    <!-- Botão para jogar novamente -->
+    <button id="restartBtn" style="display: none;">Jogar Novamente</button>
+  </div>
+
+  <script>
+    let ws;
+    let playerName = '';
+    let currentQuestionIndex = -1;
+    let answeredThisRound = false;
+    let hasStarted = false; 
+
+    const loginDiv      = document.getElementById('login');
+    const gameDiv       = document.getElementById('game');
+    const scoreboardDiv = document.getElementById('scoreboard');
+
+    const nameInput     = document.getElementById('nameInput');
+    const joinBtn       = document.getElementById('joinBtn');
+    const loginStatus   = document.getElementById('loginStatus');
+
+    const startBtn      = document.getElementById('startBtn');
+    const questionEl    = document.getElementById('question');
+    const optionsEl     = document.getElementById('options');
+    const statusEl      = document.getElementById('status');
+
+    const scoresList    = document.getElementById('scores');
+    const restartBtn    = document.getElementById('restartBtn');
+
+    
+    joinBtn.addEventListener('click', () => {
+      const name = nameInput.value.trim();
+      if (!name) {
+        loginStatus.textContent = 'Por favor, digite um nome.';
+        return;
+      }
+      playerName = name;
+      startWebSocket();
+    });
+
+    function startWebSocket() {
+      
+      const protocolo = (window.location.protocol === 'https:') ? 'wss://' : 'ws://';
+      ws = new WebSocket(protocolo + window.location.host);
+
+      ws.onopen = () => {
+        
+        ws.send(JSON.stringify({ type: 'register', name: playerName }));
+        loginDiv.style.display = 'none';
+        gameDiv.style.display  = 'block';
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        switch (data.type) {
+          case 'info':
+            
+            statusEl.textContent = data.message;
+            break;
+
+          case 'question':
+            
+            if (!hasStarted) {
+              hasStarted = true;
+              startBtn.style.display = 'none';
+            }
+            renderQuestion(data.question, data.options, data.questionIndex);
+            break;
+
+          case 'answered':
+            
+            const msg = (data.winner === playerName)
+              ? 'Você acertou primeiro! 🎉'
+              : `⏱️ ${data.winner} acertou: "${data.correctOption}"`;
+            statusEl.textContent = msg;
+            disableOptions();
+            break;
+
+          case 'game_over':
+            
+            showFinalScores(data.scoreboard);
+            break;
+
+          case 'error':
+            
+            alert('Erro do servidor: ' + data.message);
+            break;
+
+          default:
+            console.warn('Tipo de mensagem desconhecido:', data);
+        }
+      };
+
+      ws.onclose = () => {
+        console.log('Conexão encerrada pelo servidor.');
+      };
+    }
+
+    
+    startBtn.addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN && !hasStarted) {
+        ws.send(JSON.stringify({ type: 'start' }));
+        hasStarted = true;
+        startBtn.style.display = 'none';
+        statusEl.textContent = 'Aguardando início do quiz...';
+      }
+    });
+
+    
+    function renderQuestion(questionText, options, qIndex) {
+      currentQuestionIndex = qIndex;
+      answeredThisRound    = false;
+      statusEl.textContent = '';
+      questionEl.textContent = questionText;
+      optionsEl.innerHTML  = '';
+      options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.textContent = opt;
+        btn.disabled = false;
+        btn.addEventListener('click', () => {
+          if (answeredThisRound) return;
+          answeredThisRound = true;
+          ws.send(JSON.stringify({
+            type: 'answer',
+            questionIndex: currentQuestionIndex,
+            answerIndex: idx
+          }));
+          btn.style.opacity = '0.6';
+        });
+        optionsEl.appendChild(btn);
+      });
+    }
+
+    function disableOptions() {
+      const btns = optionsEl.querySelectorAll('button');
+      btns.forEach(b => b.disabled = true);
+    }
+
+    
+    function showFinalScores(scoreboard) {
+      gameDiv.style.display       = 'none';
+      scoreboardDiv.style.display = 'block';
+      scoresList.innerHTML        = '';
+      scoreboard.forEach(({ name, score }, idx) => {
+        const li = document.createElement('li');
+        li.textContent = `${idx + 1}º — ${name}: ${score} ponto(s)`;
+        scoresList.appendChild(li);
+      });
+      
+      restartBtn.style.display = 'block';
+      hasStarted = false;
+    }
+
+    
+    restartBtn.addEventListener('click', () => {
+      if (ws && ws.readyState === WebSocket.OPEN && !hasStarted) {
+        ws.send(JSON.stringify({ type: 'start' }));
+        
+        scoreboardDiv.style.display = 'none';
+        restartBtn.style.display    = 'none';
+        gameDiv.style.display       = 'block';
+        statusEl.textContent        = 'Aguardando início do quiz...';
+        hasStarted = true;
+      }
+    });
+  </script>
+
+</body>
+</html>
